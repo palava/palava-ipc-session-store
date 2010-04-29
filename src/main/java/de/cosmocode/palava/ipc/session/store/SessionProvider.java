@@ -32,6 +32,7 @@ import de.cosmocode.palava.store.Store;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.management.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentMap;
@@ -41,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Tobias Sarnowski
  */
-class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Disposable {
+class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Disposable, SessionProviderMBean {
     private static final Logger LOG = LoggerFactory.getLogger(SessionProvider.class);
 
     // store metadata list key (a key, which cannot be possible for a session id)
@@ -64,6 +65,8 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
     private ConcurrentMap<String, Session> sessions;
 
     private boolean shuttingDown = false;
+    private MBeanServer mBeanServer;
+    private ObjectName jmxName;
 
 
     @Inject
@@ -78,6 +81,11 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
         this.scheduledExecutorService = scheduledExecutorService;
         this.expirationTime = expirationTime;
         this.expirationTimeUnit = expirationTimeUnit;
+    }
+
+    @Inject(optional = true)
+    public void setMBeanServer(MBeanServer mBeanServer) {
+        this.mBeanServer = mBeanServer;
     }
 
 
@@ -220,6 +228,16 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
             session.setStore(store);
         }
 
+        // if we have a JMX server, use it
+        if (mBeanServer != null) {
+            try {
+                jmxName = new ObjectName("de.cosmocode.palava.session.store:type=SessionProviderMBean");
+                mBeanServer.registerMBean(this, jmxName);
+            } catch (JMException e) {
+                throw new LifecycleException(e);
+            }
+        }
+
         // schedule myself for clean ups
         scheduledExecutorService.scheduleAtFixedRate(this, 1, 15, TimeUnit.MINUTES);
     }
@@ -227,6 +245,14 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
     @Override
     public void dispose() throws LifecycleException {
         shuttingDown = true;
+
+        if (mBeanServer != null) {
+            try {
+                mBeanServer.unregisterMBean(jmxName);
+            } catch (JMException e) {
+                LOG.error("Cannot unregister from JMX server", e);
+            }
+        }
 
         LOG.debug("Storing {} sessions...", sessions.size());
 
@@ -269,5 +295,21 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
             throw new LifecycleException(e);
         }
         LOG.info("Stopped with {} sessions in store.", sessions.size());
+    }
+
+    @Override
+    public int getSessionCount() {
+        return sessions.size();
+    }
+
+    @Override
+    public int getHydratedSessionCount() {
+        int count = 0;
+        for (Session session: sessions.values()) {
+            if (session.isHydrated()) {
+                count++;
+            }
+        }
+        return count;
     }
 }
