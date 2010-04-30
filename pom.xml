@@ -30,13 +30,11 @@
             <artifactId>palava-store</artifactId>
             <version>[2.0,3)</version>
         </dependency>
-        <!--
         <dependency>
-            <groupId>de.cosmocode</groupId>
-            <artifactId>cosmocode-commons</artifactId>
-            <version>[1.5,2)</version>
+            <groupId>de.cosmocode.palava</groupId>
+            <artifactId>palava-jmx</artifactId>
+            <version>[1.2-SNAPSHOT,2)</version>
         </dependency>
-        -->
     </dependencies>
 
 </project>

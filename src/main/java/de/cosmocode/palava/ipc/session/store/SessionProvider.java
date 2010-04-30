@@ -28,6 +28,7 @@ import de.cosmocode.palava.core.lifecycle.Disposable;
 import de.cosmocode.palava.core.lifecycle.Initializable;
 import de.cosmocode.palava.core.lifecycle.LifecycleException;
 import de.cosmocode.palava.ipc.*;
+import de.cosmocode.palava.jmx.MBeanRegistered;
 import de.cosmocode.palava.store.Store;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Tobias Sarnowski
  */
-class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Disposable, SessionProviderMBean {
+class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Runnable,
+        Initializable, Disposable, SessionProviderMBean {
     private static final Logger LOG = LoggerFactory.getLogger(SessionProvider.class);
 
     // store metadata list key (a key, which cannot be possible for a session id)
@@ -65,8 +67,6 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
     private ConcurrentMap<String, Session> sessions;
 
     private boolean shuttingDown = false;
-    private MBeanServer mBeanServer;
-    private ObjectName jmxName;
 
 
     @Inject
@@ -76,16 +76,13 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
                            @Named(IpcSessionConfig.EXPIRATION_TIME) long expirationTime,
                            @Named(IpcSessionConfig.EXPIRATION_TIME_UNIT) TimeUnit expirationTimeUnit)
     {
+        super(SessionProvider.class);
+
         this.store = store;
         this.registry = registry;
         this.scheduledExecutorService = scheduledExecutorService;
         this.expirationTime = expirationTime;
         this.expirationTimeUnit = expirationTimeUnit;
-    }
-
-    @Inject(optional = true)
-    public void setMBeanServer(MBeanServer mBeanServer) {
-        this.mBeanServer = mBeanServer;
     }
 
 
@@ -228,15 +225,7 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
             session.setStore(store);
         }
 
-        // if we have a JMX server, use it
-        if (mBeanServer != null) {
-            try {
-                jmxName = new ObjectName("de.cosmocode.palava.session.store:type=SessionProviderMBean");
-                mBeanServer.registerMBean(this, jmxName);
-            } catch (JMException e) {
-                throw new LifecycleException(e);
-            }
-        }
+        super.initialize();
 
         // schedule myself for clean ups
         scheduledExecutorService.scheduleAtFixedRate(this, 1, 15, TimeUnit.MINUTES);
@@ -246,13 +235,7 @@ class SessionProvider implements IpcSessionProvider, Runnable, Initializable, Di
     public void dispose() throws LifecycleException {
         shuttingDown = true;
 
-        if (mBeanServer != null) {
-            try {
-                mBeanServer.unregisterMBean(jmxName);
-            } catch (JMException e) {
-                LOG.error("Cannot unregister from JMX server", e);
-            }
-        }
+        super.initialize();
 
         LOG.debug("Storing {} sessions...", sessions.size());
 
