@@ -29,6 +29,7 @@ import de.cosmocode.palava.core.lifecycle.Initializable;
 import de.cosmocode.palava.core.lifecycle.LifecycleException;
 import de.cosmocode.palava.ipc.*;
 import de.cosmocode.palava.jmx.MBeanRegistered;
+import de.cosmocode.palava.jmx.MBeanService;
 import de.cosmocode.palava.store.Store;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Tobias Sarnowski
  */
-class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Runnable,
+class SessionProvider implements IpcSessionProvider, Runnable,
         Initializable, Disposable, SessionProviderMBean {
     private static final Logger LOG = LoggerFactory.getLogger(SessionProvider.class);
 
@@ -62,6 +63,7 @@ class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Run
     // configuration
     private final long expirationTime;
     private final TimeUnit expirationTimeUnit;
+    private MBeanService mBeanService;
 
     // memory storage
     private ConcurrentMap<String, Session> sessions;
@@ -74,15 +76,15 @@ class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Run
                            Registry registry,
                            @BackgroundScheduler ScheduledExecutorService scheduledExecutorService,
                            @Named(IpcSessionConfig.EXPIRATION_TIME) long expirationTime,
-                           @Named(IpcSessionConfig.EXPIRATION_TIME_UNIT) TimeUnit expirationTimeUnit)
+                           @Named(IpcSessionConfig.EXPIRATION_TIME_UNIT) TimeUnit expirationTimeUnit,
+                           MBeanService mBeanService)
     {
-        super(SessionProvider.class);
-
         this.store = store;
         this.registry = registry;
         this.scheduledExecutorService = scheduledExecutorService;
         this.expirationTime = expirationTime;
         this.expirationTimeUnit = expirationTimeUnit;
+        this.mBeanService = mBeanService;
     }
 
 
@@ -225,7 +227,7 @@ class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Run
             session.setStore(store);
         }
 
-        super.initialize();
+        mBeanService.register(this);
 
         // schedule myself for clean ups
         scheduledExecutorService.scheduleAtFixedRate(this, 1, 15, TimeUnit.MINUTES);
@@ -235,7 +237,7 @@ class SessionProvider extends MBeanRegistered implements IpcSessionProvider, Run
     public void dispose() throws LifecycleException {
         shuttingDown = true;
 
-        super.initialize();
+        mBeanService.unregister(this);
 
         LOG.debug("Storing {} sessions...", sessions.size());
 
