@@ -16,32 +16,43 @@
 
 package de.cosmocode.palava.ipc.session.store;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
-import de.cosmocode.palava.ipc.AbstractIpcSession;
-import de.cosmocode.palava.store.Store;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.Map;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+
+import de.cosmocode.palava.ipc.AbstractIpcSession;
+import de.cosmocode.palava.ipc.IpcSession;
+import de.cosmocode.palava.store.Store;
 
 /**
+ * Storable implementation of the {@link IpcSession} interface.
+ * 
+ * @author Willi Schoenborn
  * @author Tobias Sarnowski
  */
 class Session extends AbstractIpcSession implements Serializable {
-    private transient static final Logger LOG = LoggerFactory.getLogger(Session.class);
+    
+    private static final long serialVersionUID = 6746261643974379263L;
 
-    // store for hydration
+    private static final Logger LOG = LoggerFactory.getLogger(Session.class);
+
     private transient Store store;
 
-    // basic meta data
     private final String sessionId;
     private final String identifier;
 
     // the data storage
     private Map<Object, Object> data = Maps.newHashMap();
-
 
     protected Session(String sessionId, String identifier, Store store) {
         this.sessionId = sessionId;
@@ -65,14 +76,6 @@ class Session extends AbstractIpcSession implements Serializable {
         return data;
     }
 
-    /**
-     * @return "+" symbolizes the in-memory session, "-" means, the session is in the storage
-     */
-    @Override
-    public String toString() {
-        return "{Session" + (isHydrated()?"+":"-") + ":" + getSessionId() + "/" + getIdentifier() + "}";
-    }
-
     protected void setStore(Store store) {
         this.store = store;
     }
@@ -81,15 +84,22 @@ class Session extends AbstractIpcSession implements Serializable {
         return data != null;
     }
 
+    /**
+     * Dehydrates this session.
+     * 
+     * @since 1.0
+     * @throws IllegalStateException if this session is already dehydrated
+     * @throws IOException if storing session data failed
+     */
     public void dehydrate() throws IOException {
         Preconditions.checkState(isHydrated(), "session %s already dehydrated", this);
         LOG.trace("Dehydrating {}", this);
 
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        ObjectOutputStream objout = new ObjectOutputStream(buffer);
+        final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        final ObjectOutputStream stream = new ObjectOutputStream(buffer);
 
-        objout.writeObject(this.data);
-        objout.close();
+        stream.writeObject(data);
+        stream.close();
 
         store.create(new ByteArrayInputStream(buffer.toByteArray()), sessionId);
 
@@ -101,9 +111,13 @@ class Session extends AbstractIpcSession implements Serializable {
         LOG.trace("Hydrating {}", this);
 
         try {
-            ObjectInputStream objin = new ObjectInputStream(store.read(sessionId));
-            this.data = (Map<Object, Object>) objin.readObject();
-            objin.close();
+            final ObjectInputStream stream = new ObjectInputStream(store.read(sessionId));
+            
+            @SuppressWarnings("unchecked")
+            final Map<Object, Object> map = (Map<Object, Object>) stream.readObject();
+            
+            this.data = map;
+            stream.close();
             store.delete(sessionId);
         } catch (IOException e) {
             LOG.error("IO exception on loading session data for " + this, e);
@@ -121,4 +135,17 @@ class Session extends AbstractIpcSession implements Serializable {
             }
         }
     }
+
+    /**
+     * <p>
+     *   "+" symbolizes the in-memory session, "-" means, the session is in the storage.
+     * </p>
+     * 
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("Session %s:%s/%s", isHydrated() ? "+" : "-", getSessionId(), getIdentifier());
+    }
+    
 }

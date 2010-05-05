@@ -17,10 +17,26 @@
 package de.cosmocode.palava.ipc.session.store;
 
 /**
+ * MBean interface for {@link SessionProvider}.
+ * 
  * @author Tobias Sarnowski
  */
 public interface SessionProviderMBean {
+   
+    /**
+     * Retrieves the current session count.
+     * 
+     * @since 1.0
+     * @return the current session count
+     */
     int getSessionCount();
 
+    /**
+     * Retrieves the current hydrated session count.
+     * 
+     * @since 1.0
+     * @return the current hydrated session count
+     */
     int getHydratedSessionCount();
+    
 }

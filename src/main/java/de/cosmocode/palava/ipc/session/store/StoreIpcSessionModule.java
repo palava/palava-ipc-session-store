@@ -21,8 +21,9 @@ import com.google.inject.Module;
 import com.google.inject.Singleton;
 import de.cosmocode.palava.ipc.IpcSessionProvider;
 
-
 /**
+ * Binds {@link IpcSessionProvider} to {@link SessionProvider}.
+ * 
  * @author Tobias Sarnowski
  */
 public class StoreIpcSessionModule implements Module {
