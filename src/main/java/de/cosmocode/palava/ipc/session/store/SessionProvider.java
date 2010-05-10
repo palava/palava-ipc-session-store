@@ -55,32 +55,32 @@ import de.cosmocode.palava.store.Store;
 
 /**
  * Provider and manager for storable {@link IpcSession}s.
- * 
+ *
  * @author Willi Schoenborn
  * @author Tobias Sarnowski
  */
-final class SessionProvider implements IpcSessionProvider, Stateful, Initializable, Runnable, Disposable, 
+final class SessionProvider implements IpcSessionProvider, Stateful, Initializable, Runnable, Disposable,
     SessionProviderMBean {
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(SessionProvider.class);
 
     // store metadata list key (a key, which cannot be possible for a session id)
     private static final String DATA_KEY = "session_data";
 
     private final Store store;
-    
+
     private final ScheduledExecutorService scheduledExecutorService;
-    
+
     private final Registry registry;
-    
+
     private final MBeanService mBeanService;
 
     private final long expirationTime;
-    
+
     private final TimeUnit expirationTimeUnit;
-    
+
     private long dehydrationTime = 1;
-    
+
     private TimeUnit dehydrationTimeUnit = TimeUnit.HOURS;
 
     private ConcurrentMap<String, Session> sessions;
@@ -95,7 +95,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         @Named(IpcSessionConfig.EXPIRATION_TIME) long expirationTime,
         @Named(IpcSessionConfig.EXPIRATION_TIME_UNIT) TimeUnit expirationTimeUnit,
         MBeanService mBeanService) {
-        
+
         this.store = store;
         this.registry = registry;
         this.scheduledExecutorService = scheduledExecutorService;
@@ -108,34 +108,34 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
     void setDehydrationTime(@Named(SessionProviderConfig.DEHYDRATION_TIME) long dehydrationTime) {
         this.dehydrationTime = dehydrationTime;
     }
-    
+
     @Inject(optional = true)
     void setDehydrationTimeUnit(@Named(SessionProviderConfig.DEHYDRATION_TIME_UNIT) TimeUnit dehydrationTimeUnit) {
         this.dehydrationTimeUnit = Preconditions.checkNotNull(dehydrationTimeUnit, "DehydrationTimeUnit");
     }
-    
+
     @Override
     public State currentState() {
         return state;
     }
-    
+
     @Override
     public boolean isRunning() {
         return currentState() == State.RUNNING;
     }
-    
+
     @Override
     public void initialize() throws LifecycleException {
         state = State.STARTING;
-        
+
         try {
             final ObjectInputStream objin = new ObjectInputStream(store.read(DATA_KEY));
-            
+
             @SuppressWarnings("unchecked")
             final ConcurrentMap<String, Session> map = (ConcurrentMap<String, Session>) objin.readObject();
-            
+
             this.sessions = map;
-            
+
             objin.close();
             LOG.info("Loaded {} sessions from store.", sessions.size());
         } catch (IllegalArgumentException e) {
@@ -151,7 +151,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             LOG.warn("No session pool data found.", e);
             sessions = null;
         }
-        
+
         if (sessions == null) {
             sessions = new ConcurrentHashMap<String, Session>();
         }
@@ -171,22 +171,22 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         mBeanService.register(this);
 
         scheduledExecutorService.scheduleAtFixedRate(this, 1, 15, TimeUnit.MINUTES);
-        
+
         state = State.RUNNING;
     }
 
     @Override
     public IpcSession getSession(String sessionId, String identifier) {
-        Preconditions.checkState(isRunning(), 
+        Preconditions.checkState(isRunning(),
             "%s is currently in %s state; retrieving sessions is not allowed.", this, state);
 
         if (sessionId == null) {
             LOG.trace("No sessionId given, creating a new one");
             return createSession(identifier);
         }
-        
+
         final Session session = sessions.get(sessionId);
-        
+
         if (session == null) {
             LOG.trace("No session found with id {}, creating new one", sessionId);
             return createSession(identifier);
@@ -196,13 +196,13 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             removeSession(session);
             return createSession(identifier);
         }
-        
+
         if (session.getIdentifier() != identifier
                 && (session.getIdentifier() != null && !session.getIdentifier().equals(identifier))) {
             LOG.debug("Session {} requested with the wrong identifier {}", session, identifier);
             return createSession(identifier);
         }
-        
+
         return session;
     }
 
@@ -213,12 +213,12 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         sessions.put(session.getSessionId(), session);
 
         registry.notifySilent(IpcSessionCreateEvent.class, new Procedure<IpcSessionCreateEvent>() {
-            
+
             @Override
             public void apply(IpcSessionCreateEvent input) {
                 input.eventIpcSessionCreate(session);
             }
-            
+
         });
 
         LOG.debug("Created {}", session);
@@ -230,12 +230,12 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         session.clear();
 
         registry.notifySilent(IpcSessionDestroyEvent.class, new Procedure<IpcSessionDestroyEvent>() {
-            
+
             @Override
             public void apply(IpcSessionDestroyEvent input) {
                 input.eventIpcSessionDestroy(session);
             }
-            
+
         });
 
         LOG.debug("Destroyed {}", session);
@@ -283,19 +283,21 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             mBeanService.unregister(this);
         } finally {
             LOG.debug("Storing {} sessions...", sessions.size());
-            
+
             final Map<Exception, Long> thrownExceptions = Maps.newTreeMap(new Comparator<Exception>() {
-                
+
                 @Override
                 public int compare(Exception left, Exception right) {
                     return left.toString().compareTo(right.toString());
                 }
-                
+
             });
-            
+
             for (Session session : sessions.values()) {
                 try {
-                    session.dehydrate();
+                    if (session.isHydrated()) {
+                        session.dehydrate();
+                    }
                 } catch (IOException e) {
                     Long counter = thrownExceptions.get(e);
                     if (counter == null) {
@@ -307,30 +309,30 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
                     removeSession(session);
                 }
             }
-            
+
             for (Map.Entry<Exception, Long> entry : thrownExceptions.entrySet()) {
-                LOG.error(entry.getValue() + " sessions failed to dehydrate with the following exception", 
+                LOG.error(entry.getValue() + " sessions failed to dehydrate with the following exception",
                     entry.getKey());
             }
-            
+
             final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             final ObjectOutputStream objout;
-            
+
             try {
                 objout = new ObjectOutputStream(buffer);
-                
+
                 objout.writeObject(sessions);
                 objout.close();
-                
+
                 store.create(new ByteArrayInputStream(buffer.toByteArray()), DATA_KEY);
             } catch (IOException e) {
                 state = State.FAILED;
                 throw new LifecycleException(e);
             }
-            
+
             LOG.info("Stopped with {} sessions in store.", sessions.size());
             state = State.TERMINATED;
         }
     }
-    
+
 }
