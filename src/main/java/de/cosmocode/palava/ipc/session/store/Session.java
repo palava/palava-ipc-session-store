@@ -145,7 +145,7 @@ class Session extends AbstractIpcSession implements Serializable {
      */
     @Override
     public String toString() {
-        return String.format("Session %s:%s/%s", isHydrated() ? "+" : "-", getSessionId(), getIdentifier());
+        return String.format("Session{%s:%s/%s}", isHydrated() ? "+" : "-", getSessionId(), getIdentifier());
     }
     
 }
