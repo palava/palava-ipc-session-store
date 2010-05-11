@@ -148,7 +148,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             LOG.error("Incompatible session data; starting with new pool", e);
             sessions = null;
         } catch (IllegalStateException e) {
-            LOG.warn("No session pool data found.", e);
+            LOG.warn("No session pool data found.");
             sessions = null;
         }
 
