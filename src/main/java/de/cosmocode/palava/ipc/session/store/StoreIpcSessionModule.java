@@ -19,6 +19,7 @@ package de.cosmocode.palava.ipc.session.store;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Singleton;
+
 import de.cosmocode.palava.ipc.IpcSessionProvider;
 
 /**

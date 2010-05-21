@@ -16,14 +16,14 @@
 
 package de.cosmocode.palava.ipc.session.store;
 
-import com.google.inject.BindingAnnotation;
-
-import de.cosmocode.palava.store.Store;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.google.inject.BindingAnnotation;
+
+import de.cosmocode.palava.store.Store;
 
 /**
  * Binding annotation for a {@link Store} which can be used
