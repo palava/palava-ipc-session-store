@@ -212,7 +212,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         session.setTimeout(expirationTime, expirationTimeUnit);
         sessions.put(session.getSessionId(), session);
 
-        registry.notifySilent(IpcSessionCreateEvent.class, new Procedure<IpcSessionCreateEvent>() {
+        registry.notifySilently(IpcSessionCreateEvent.class, new Procedure<IpcSessionCreateEvent>() {
 
             @Override
             public void apply(IpcSessionCreateEvent input) {
@@ -229,7 +229,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
         sessions.remove(session.getSessionId());
         session.clear();
 
-        registry.notifySilent(IpcSessionDestroyEvent.class, new Procedure<IpcSessionDestroyEvent>() {
+        registry.notifySilently(IpcSessionDestroyEvent.class, new Procedure<IpcSessionDestroyEvent>() {
 
             @Override
             public void apply(IpcSessionDestroyEvent input) {
