@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.common.io.Closeables;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
@@ -128,15 +129,19 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
     public void initialize() throws LifecycleException {
         state = State.STARTING;
 
+        
         try {
             final ObjectInputStream objin = new ObjectInputStream(store.read(DATA_KEY));
-
-            @SuppressWarnings("unchecked")
-            final ConcurrentMap<String, Session> map = (ConcurrentMap<String, Session>) objin.readObject();
-
-            this.sessions = map;
-
-            objin.close();
+            
+            try {
+                @SuppressWarnings("unchecked")
+                final ConcurrentMap<String, Session> map = (ConcurrentMap<String, Session>) objin.readObject();
+                
+                this.sessions = map;
+            } finally {
+                objin.close();
+            }
+            
             LOG.info("Loaded {} sessions from store.", sessions.size());
         } catch (IllegalArgumentException e) {
             LOG.info("No session data found; starting with new pool", e);
@@ -316,18 +321,17 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             }
 
             final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            final ObjectOutputStream objout;
+            ObjectOutputStream objout = null;
 
             try {
                 objout = new ObjectOutputStream(buffer);
-
                 objout.writeObject(sessions);
-                objout.close();
-
                 store.create(new ByteArrayInputStream(buffer.toByteArray()), DATA_KEY);
             } catch (IOException e) {
                 state = State.FAILED;
                 throw new LifecycleException(e);
+            } finally {
+                Closeables.closeQuietly(objout);
             }
 
             LOG.info("Stopped with {} sessions in store.", sessions.size());

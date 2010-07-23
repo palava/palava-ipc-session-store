@@ -98,8 +98,11 @@ class Session extends AbstractIpcSession implements Serializable {
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         final ObjectOutputStream stream = new ObjectOutputStream(buffer);
 
-        stream.writeObject(data);
-        stream.close();
+        try {
+            stream.writeObject(data);
+        } finally {
+            stream.close();
+        }
 
         store.create(new ByteArrayInputStream(buffer.toByteArray()), sessionId);
 
@@ -113,11 +116,14 @@ class Session extends AbstractIpcSession implements Serializable {
         try {
             final ObjectInputStream stream = new ObjectInputStream(store.read(sessionId));
             
-            @SuppressWarnings("unchecked")
-            final Map<Object, Object> map = (Map<Object, Object>) stream.readObject();
+            try {
+                @SuppressWarnings("unchecked")
+                final Map<Object, Object> map = (Map<Object, Object>) stream.readObject();
+                this.data = map;
+            } finally {
+                stream.close();
+            }
             
-            this.data = map;
-            stream.close();
             store.delete(sessionId);
         } catch (IOException e) {
             LOG.error("IO exception on loading session data for " + this, e);
