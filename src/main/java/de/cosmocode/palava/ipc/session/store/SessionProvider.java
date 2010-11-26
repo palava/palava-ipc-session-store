@@ -41,7 +41,7 @@ import com.google.inject.name.Named;
 import de.cosmocode.collections.Procedure;
 import de.cosmocode.commons.State;
 import de.cosmocode.commons.Stateful;
-import de.cosmocode.palava.concurrent.BackgroundScheduler;
+import de.cosmocode.palava.concurrent.Background;
 import de.cosmocode.palava.core.Registry;
 import de.cosmocode.palava.core.lifecycle.Disposable;
 import de.cosmocode.palava.core.lifecycle.Initializable;
@@ -92,7 +92,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
     public SessionProvider(
         @IpcSessionStore Store store,
         Registry registry,
-        @BackgroundScheduler ScheduledExecutorService scheduledExecutorService,
+        @Background ScheduledExecutorService scheduledExecutorService,
         @Named(IpcSessionConfig.EXPIRATION_TIME) long expirationTime,
         @Named(IpcSessionConfig.EXPIRATION_TIME_UNIT) TimeUnit expirationTimeUnit,
         MBeanService mBeanService) {
