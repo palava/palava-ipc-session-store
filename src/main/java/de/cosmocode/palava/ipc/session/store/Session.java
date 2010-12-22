@@ -21,7 +21,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -40,7 +39,7 @@ import de.cosmocode.palava.store.Store;
  * @author Willi Schoenborn
  * @author Tobias Sarnowski
  */
-class Session extends AbstractIpcSession implements Serializable {
+class Session extends AbstractIpcSession {
     
     private static final long serialVersionUID = 6746261643974379263L;
 
