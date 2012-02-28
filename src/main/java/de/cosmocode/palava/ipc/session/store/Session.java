@@ -21,13 +21,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
+import com.google.common.collect.MapMaker;
 
 import de.cosmocode.palava.ipc.AbstractIpcSession;
 import de.cosmocode.palava.ipc.IpcSession;
@@ -51,7 +51,7 @@ class Session extends AbstractIpcSession {
     private final String identifier;
 
     // the data storage
-    private Map<Object, Object> data = Maps.newHashMap();
+    private ConcurrentMap<Object, Object> data = new MapMaker().makeMap();
 
     protected Session(String sessionId, String identifier, Store store) {
         this.sessionId = sessionId;
@@ -70,7 +70,7 @@ class Session extends AbstractIpcSession {
     }
 
     @Override
-    protected Map<Object, Object> context() {
+    protected ConcurrentMap<Object, Object> delegate() {
         if (!isHydrated()) hydrate();
         return data;
     }
@@ -117,7 +117,7 @@ class Session extends AbstractIpcSession {
             
             try {
                 @SuppressWarnings("unchecked")
-                final Map<Object, Object> map = (Map<Object, Object>) stream.readObject();
+                final ConcurrentMap<Object, Object> map = (ConcurrentMap<Object, Object>) stream.readObject();
                 this.data = map;
             } finally {
                 stream.close();
@@ -136,7 +136,7 @@ class Session extends AbstractIpcSession {
         } finally {
             if (this.data == null) {
                 LOG.warn("Hydrating failed, continuing with a vanilla session.");
-                this.data = Maps.newHashMap();
+                this.data = new MapMaker().makeMap();
             }
         }
     }
@@ -152,5 +152,5 @@ class Session extends AbstractIpcSession {
     public String toString() {
         return String.format("Session{%s:%s/%s}", isHydrated() ? "+" : "-", getSessionId(), getIdentifier());
     }
-    
+
 }
