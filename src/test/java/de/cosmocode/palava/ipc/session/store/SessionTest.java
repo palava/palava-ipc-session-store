@@ -85,4 +85,12 @@ public class SessionTest {
         Assert.assertEquals("testvalue", session.get("test"));
     }
 
+    @Test
+    public void createNewSession() {
+        final IpcSessionProvider sessionProvider = framework.getInstance(IpcSessionProvider.class);
+        final IpcSession session1 = sessionProvider.getSession(null, "123.123.123.123");
+        final IpcSession session2 = sessionProvider.getSession(session1.getSessionId(), "123.123.123.123");
+        Assert.assertSame(session1, session2);
+    }
+
 }
