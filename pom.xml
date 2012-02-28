@@ -8,6 +8,7 @@
         <version>2.6.0</version>
     </parent>
 
+    <groupId>de.cosmocode.palava</groupId>
     <artifactId>palava-ipc-session-store</artifactId>
     <name>Palava IPC Session Store</name>
     <version>2.0-SNAPSHOT</version>
@@ -15,6 +16,7 @@
     <scm>
         <developerConnection>scm:git:git@github.com:palava/${project.artifactId}.git</developerConnection>
     </scm>
+
     <repositories>
         <repository>
             <id>cosmocode-public</id>
