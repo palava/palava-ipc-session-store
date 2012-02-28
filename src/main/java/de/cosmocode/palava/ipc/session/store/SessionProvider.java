@@ -89,7 +89,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
     private State state = State.NEW;
 
     @Inject
-    public SessionProvider(
+    SessionProvider(
         @IpcSessionStore Store store,
         Registry registry,
         @Background ScheduledExecutorService scheduledExecutorService,
@@ -202,8 +202,7 @@ final class SessionProvider implements IpcSessionProvider, Stateful, Initializab
             return createSession(identifier);
         }
 
-        if (session.getIdentifier() != identifier
-                && (session.getIdentifier() != null && !session.getIdentifier().equals(identifier))) {
+        if (session.getIdentifier() != null && !session.getIdentifier().equals(identifier)) {
             LOG.debug("Session {} requested with the wrong identifier {}", session, identifier);
             return createSession(identifier);
         }
