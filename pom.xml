@@ -24,6 +24,30 @@
   </repositories>
 
   <dependencies>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+      </dependency>
+        <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </dependency>
+      <dependency>
+        <groupId>de.cosmocode</groupId>
+        <artifactId>cosmocode-commons</artifactId>
+        <version>[1.20,2)</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.inject</groupId>
+        <artifactId>guice</artifactId>
+      </dependency>
+
+      <!-- palava dependencies -->
+      <dependency>
+        <groupId>de.cosmocode.palava</groupId>
+        <artifactId>palava-core</artifactId>
+        <version>[2.10.3,3)</version>
+      </dependency>
     <dependency>
       <groupId>de.cosmocode.palava</groupId>
       <artifactId>palava-ipc</artifactId>
